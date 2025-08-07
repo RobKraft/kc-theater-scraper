@@ -31,12 +31,13 @@ namespace KCTheaterWeb.Services
             // Return cached data if still valid
             if (_cachedEvents != null && DateTime.Now - _lastCacheTime < _cacheExpiry)
             {
+                _logger.LogDebug("Returning cached theater events data");
                 return _cachedEvents;
             }
 
             try
             {
-                var jsonFile = Path.Combine(_dataDirectory, "kc_theaters_events.json");
+                var jsonFile = Path.Combine(_dataDirectory, "kc-theater-events.json");
                 
                 if (!File.Exists(jsonFile))
                 {
