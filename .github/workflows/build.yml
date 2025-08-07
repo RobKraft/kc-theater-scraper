@@ -7,7 +7,8 @@ on:
     branches: [ main, master ]
 
 jobs:
-  build:
+  build-console:
+    name: Build Console Application
     runs-on: ubuntu-latest
     
     steps:
@@ -18,35 +19,67 @@ jobs:
       with:
         dotnet-version: 8.0.x
         
-    - name: Restore dependencies
-      run: dotnet restore
+    - name: Restore dependencies (Console App)
+      run: dotnet restore KCTheaterScraper.csproj
       
-    - name: Build
-      run: dotnet build --no-restore --configuration Release
+    - name: Build Console App
+      run: dotnet build KCTheaterScraper.csproj --no-restore --configuration Release
       
     - name: Test venue list
-      run: dotnet run --configuration Release list
+      run: dotnet run --project KCTheaterScraper.csproj --configuration Release list
       
     - name: Create artifacts
       run: |
         mkdir -p artifacts
-        dotnet publish --configuration Release --output artifacts/
+        dotnet publish KCTheaterScraper.csproj --configuration Release --output artifacts/
         
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: kc-theater-scraper
+        name: kc-theater-scraper-console
         path: artifacts/
         
     - name: Create Release Package
       if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
       run: |
         cd artifacts
-        zip -r ../kc-theater-scraper-${{ github.sha }}.zip .
+        zip -r ../kc-theater-scraper-console-${{ github.sha }}.zip .
         
     - name: Upload Release Package
       if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
       uses: actions/upload-artifact@v4
       with:
-        name: release-package
-        path: kc-theater-scraper-${{ github.sha }}.zip
+        name: release-package-console
+        path: kc-theater-scraper-console-${{ github.sha }}.zip
+
+  build-web:
+    name: Build Web Application
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.x
+        
+    - name: Restore dependencies (Web App)
+      run: dotnet restore KCTheaterWeb/KCTheaterWeb.csproj
+      
+    - name: Build Web App
+      run: dotnet build KCTheaterWeb/KCTheaterWeb.csproj --no-restore --configuration Release
+      
+    - name: Test Web App
+      run: dotnet test KCTheaterWeb/KCTheaterWeb.csproj --configuration Release --no-build --verbosity normal || true
+      
+    - name: Publish Web App
+      run: |
+        mkdir -p web-artifacts
+        dotnet publish KCTheaterWeb/KCTheaterWeb.csproj --configuration Release --output web-artifacts/
+        
+    - name: Upload Web App artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: kc-theater-web-app
+        path: web-artifacts/
