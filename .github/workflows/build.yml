@@ -1,0 +1,52 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: 8.0.x
+        
+    - name: Restore dependencies
+      run: dotnet restore
+      
+    - name: Build
+      run: dotnet build --no-restore --configuration Release
+      
+    - name: Test venue list
+      run: dotnet run --configuration Release list
+      
+    - name: Create artifacts
+      run: |
+        mkdir -p artifacts
+        dotnet publish --configuration Release --output artifacts/
+        
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: kc-theater-scraper
+        path: artifacts/
+        
+    - name: Create Release Package
+      if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+      run: |
+        cd artifacts
+        zip -r ../kc-theater-scraper-${{ github.sha }}.zip .
+        
+    - name: Upload Release Package
+      if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+      uses: actions/upload-artifact@v3
+      with:
+        name: release-package
+        path: kc-theater-scraper-${{ github.sha }}.zip
