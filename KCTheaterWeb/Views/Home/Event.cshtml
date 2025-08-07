@@ -1,0 +1,185 @@
+@model TheaterEvent
+@{
+    ViewData["Title"] = Model.Title;
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="@Url.Action("Index", "Home")">Events</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@Model.Title</li>
+    </ol>
+</nav>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-body">
+                <h1 class="card-title h2 mb-3">@Model.Title</h1>
+                
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <h5 class="text-primary">
+                            <i class="fas fa-map-marker-alt me-2"></i>
+                            <a href="@Url.Action("Venue", new { name = Model.VenueName })" class="text-decoration-none">
+                                @Model.VenueName
+                            </a>
+                        </h5>
+                        @if (!string.IsNullOrEmpty(Model.VenueAddress))
+                        {
+                            <p class="text-muted mb-2">
+                                <i class="fas fa-location-arrow me-2"></i>
+                                @Model.VenueAddress
+                            </p>
+                        }
+                        @if (!string.IsNullOrEmpty(Model.VenueWebsite))
+                        {
+                            <p class="mb-2">
+                                <i class="fas fa-globe me-2"></i>
+                                <a href="@Model.VenueWebsite" target="_blank" class="text-decoration-none">
+                                    Venue Website <i class="fas fa-external-link-alt ms-1"></i>
+                                </a>
+                            </p>
+                        }
+                    </div>
+                    <div class="col-md-6">
+                        <div class="text-md-end">
+                            <div class="mb-2">
+                                <strong class="text-primary h5">
+                                    <i class="fas fa-calendar me-2"></i>
+                                    @Model.FormattedDate
+                                </strong>
+                            </div>
+                            <div class="mb-2">
+                                <strong class="h6">
+                                    <i class="fas fa-clock me-2"></i>
+                                    @Model.FormattedTime
+                                </strong>
+                            </div>
+                            @if (Model.HasEndDate)
+                            {
+                                <div class="mb-2 text-muted">
+                                    <i class="fas fa-hourglass-half me-2"></i>
+                                    Until @Model.EndDate!.Value.ToString("h:mm tt")
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrEmpty(Model.Category))
+                {
+                    <div class="mb-3">
+                        <span class="badge bg-secondary fs-6">@Model.Category</span>
+                    </div>
+                }
+
+                @if (!string.IsNullOrEmpty(Model.Description))
+                {
+                    <div class="mb-4">
+                        <h4>About This Event</h4>
+                        <p class="lead">@Model.Description</p>
+                    </div>
+                }
+
+                @if (Model.TicketPrice.HasValue || !string.IsNullOrEmpty(Model.TicketUrl))
+                {
+                    <div class="alert alert-info">
+                        <h5 class="alert-heading">
+                            <i class="fas fa-ticket-alt me-2"></i>
+                            Ticket Information
+                        </h5>
+                        @if (Model.TicketPrice.HasValue)
+                        {
+                            <p class="mb-2">
+                                <strong>Price: </strong>
+                                <span class="text-success h5">$@Model.TicketPrice.Value.ToString("F2")</span>
+                            </p>
+                        }
+                        @if (!string.IsNullOrEmpty(Model.TicketUrl))
+                        {
+                            <a href="@Model.TicketUrl" target="_blank" class="btn btn-primary">
+                                <i class="fas fa-external-link-alt me-2"></i>
+                                Buy Tickets
+                            </a>
+                        }
+                    </div>
+                }
+
+                <div class="text-muted small">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Event information last updated: @Model.ScrapedAt.ToString("MMM dd, yyyy h:mm tt")
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <!-- Quick Actions -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    @if (!string.IsNullOrEmpty(Model.TicketUrl))
+                    {
+                        <a href="@Model.TicketUrl" target="_blank" class="btn btn-primary">
+                            <i class="fas fa-ticket-alt me-2"></i>Get Tickets
+                        </a>
+                    }
+                    <a href="@Url.Action("Venue", new { name = Model.VenueName })" class="btn btn-outline-primary">
+                        <i class="fas fa-building me-2"></i>More at @Model.VenueName
+                    </a>
+                    <a href="@Url.Action("Index", new { venue = Model.VenueName })" class="btn btn-outline-secondary">
+                        <i class="fas fa-list me-2"></i>All Events at Venue
+                    </a>
+                    @if (!string.IsNullOrEmpty(Model.Category))
+                    {
+                        <a href="@Url.Action("Index", new { category = Model.Category })" class="btn btn-outline-secondary">
+                            <i class="fas fa-tags me-2"></i>More @Model.Category Events
+                        </a>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Share -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Share This Event</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-primary" onclick="copyToClipboard()">
+                        <i class="fas fa-link me-2"></i>Copy Link
+                    </button>
+                    <a href="mailto:?subject=@Uri.EscapeDataString($"KC Theater Event: {Model.Title}")&body=@Uri.EscapeDataString($"Check out this theater event: {Model.Title} at {Model.VenueName} on {Model.FormattedDateTime}. {Context.Request.Scheme}://{Context.Request.Host}{Context.Request.Path}")" 
+                       class="btn btn-outline-primary">
+                        <i class="fas fa-envelope me-2"></i>Email
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function copyToClipboard() {
+            navigator.clipboard.writeText(window.location.href).then(function() {
+                // Show success message
+                const btn = event.target;
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '<i class="fas fa-check me-2"></i>Copied!';
+                btn.classList.remove('btn-outline-primary');
+                btn.classList.add('btn-success');
+                
+                setTimeout(function() {
+                    btn.innerHTML = originalText;
+                    btn.classList.remove('btn-success');
+                    btn.classList.add('btn-outline-primary');
+                }, 2000);
+            });
+        }
+    </script>
+}
