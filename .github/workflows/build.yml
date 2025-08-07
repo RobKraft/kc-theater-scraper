@@ -14,7 +14,7 @@ jobs:
     - uses: actions/checkout@v4
     
     - name: Setup .NET
-      uses: actions/setup-dotnet@v3
+      uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 8.0.x
         
@@ -33,7 +33,7 @@ jobs:
         dotnet publish --configuration Release --output artifacts/
         
     - name: Upload artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: kc-theater-scraper
         path: artifacts/
@@ -46,7 +46,7 @@ jobs:
         
     - name: Upload Release Package
       if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: release-package
         path: kc-theater-scraper-${{ github.sha }}.zip
