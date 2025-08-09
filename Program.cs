@@ -98,8 +98,7 @@ namespace KCTheaterScraper
                 case "scrape":
                 case "run":
                     Log.Information("Running one-time scraping");
-                    var scheduledService = services.GetRequiredService<ScheduledScrapingService>();
-                    await scheduledService.RunManualScrapingAsync();
+                    await RunManualScraping(services);
                     break;
 
                 case "test":
@@ -116,6 +115,85 @@ namespace KCTheaterScraper
                 default:
                     ShowHelp();
                     break;
+            }
+        }
+
+        static async Task RunManualScraping(IServiceProvider services)
+        {
+            var scrapingService = services.GetRequiredService<ScrapingService>();
+            var calendarService = services.GetRequiredService<CalendarService>();
+            var configuration = services.GetRequiredService<IConfiguration>();
+            var logger = services.GetRequiredService<ILogger<Program>>();
+
+            try
+            {
+                // Get output directory from configuration
+                var outputDir = configuration.GetValue<string>("ScrapingSettings:OutputDirectory") ?? "./output";
+                outputDir = Path.GetFullPath(outputDir);
+                Directory.CreateDirectory(outputDir);
+                
+                // Load venue list
+                var venues = LoadVenuesFromConfiguration(configuration);
+                
+                // Scrape all venues
+                logger.LogInformation("Starting manual scraping of {VenueCount} venues", venues.Count);
+                var events = await scrapingService.ScrapeAllVenuesAsync(venues);
+                
+                if (events.Any())
+                {
+                    // Save calendar file
+                    var calendar = calendarService.CreateICalendar(events);
+                    var calendarPath = Path.Combine(outputDir, "kc-theater-events.ics");
+                    await SaveCalendarToFileAsync(calendar, calendarPath, logger);
+                    
+                    // Save JSON file
+                    var jsonPath = Path.Combine(outputDir, "kc-theater-events.json");
+                    await SaveEventsAsJsonAsync(events, jsonPath, logger);
+                    
+                    logger.LogInformation("Manual scraping completed. Saved {EventCount} events to {OutputDir}", 
+                        events.Count, outputDir);
+                }
+                else
+                {
+                    logger.LogWarning("No events were scraped");
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error during manual scraping");
+                throw;
+            }
+        }
+
+        static async Task SaveCalendarToFileAsync(string calendar, string filePath, Microsoft.Extensions.Logging.ILogger<Program> logger)
+        {
+            try
+            {
+                await File.WriteAllTextAsync(filePath, calendar);
+                logger.LogInformation("Calendar saved to: {FilePath}", filePath);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error saving calendar to: {FilePath}", filePath);
+            }
+        }
+
+        static async Task SaveEventsAsJsonAsync(List<KCTheaterScraper.Models.TheaterEvent> events, string filePath, Microsoft.Extensions.Logging.ILogger<Program> logger)
+        {
+            try
+            {
+                var json = System.Text.Json.JsonSerializer.Serialize(events, new System.Text.Json.JsonSerializerOptions
+                {
+                    WriteIndented = true,
+                    PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase
+                });
+
+                await File.WriteAllTextAsync(filePath, json);
+                logger.LogInformation("Events saved as JSON to: {FilePath}", filePath);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error saving events as JSON to: {FilePath}", filePath);
             }
         }
 

@@ -83,3 +83,254 @@ jobs:
       with:
         name: kc-theater-web-app
         path: web-artifacts/
+
+  build-and-deploy-static:
+    name: Build and Deploy Static Site to Netlify
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.x
+        
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: Install Netlify CLI
+      run: npm install -g netlify-cli
+        
+    - name: Restore dependencies (Console App)
+      run: dotnet restore KCTheaterScraper.csproj
+      
+    - name: Build Console App
+      run: dotnet build KCTheaterScraper.csproj --no-restore --configuration Release
+      
+    - name: Run Scraper to Generate Data
+      run: |
+        # Run scraper with timeout to prevent hanging
+        timeout 120 dotnet run --project KCTheaterScraper.csproj --configuration Release scrape || echo "Scraper completed or timed out"
+        
+        # Ensure we have data files (use sample data if scraping failed)
+        if [ ! -f "./output/kc-theater-events.json" ]; then
+          echo "No scraped data found, using sample data"
+          mkdir -p ./output
+          # Create sample data if needed
+          echo '[]' > ./output/kc-theater-events.json
+        fi
+        
+    - name: Build Static Site
+      run: |
+        # Make build script executable
+        chmod +x ./build-static.sh
+        
+        # Create bash version of the PowerShell script
+        cat > ./build-static.sh << 'EOF'
+        #!/bin/bash
+        set -e
+        
+        OUTPUT_PATH="./static-site"
+        DATA_PATH="./output"
+        
+        echo "Building static site for KC Theater Web App..."
+        
+        # Clean and create output directory
+        rm -rf "$OUTPUT_PATH"
+        mkdir -p "$OUTPUT_PATH"
+        
+        # Copy data files
+        echo "Copying data files..."
+        mkdir -p "$OUTPUT_PATH/data"
+        if [ -d "$DATA_PATH" ]; then
+          cp "$DATA_PATH"/*.json "$OUTPUT_PATH/data/" 2>/dev/null || echo "No JSON files to copy"
+        fi
+        
+        # Copy web app static files
+        echo "Copying static assets..."
+        if [ -d "./KCTheaterWeb/wwwroot" ]; then
+          cp -r ./KCTheaterWeb/wwwroot/* "$OUTPUT_PATH/" 2>/dev/null || echo "No wwwroot files to copy"
+        fi
+        
+        # Create index.html
+        cat > "$OUTPUT_PATH/index.html" << 'HTML'
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="utf-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+            <title>Kansas City Theater Events</title>
+            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+            <style>
+                .footer { position: absolute; bottom: 0; width: 100%; height: 60px; background-color: #f5f5f5; }
+                body { margin-bottom: 60px; }
+            </style>
+        </head>
+        <body>
+            <header>
+                <nav class="navbar navbar-expand-sm navbar-light bg-white border-bottom box-shadow mb-3">
+                    <div class="container-fluid">
+                        <a class="navbar-brand" href="/">KC Theater Events</a>
+                        <div class="navbar-nav">
+                            <a class="nav-link" href="#" onclick="showListView()">List View</a>
+                            <a class="nav-link" href="#" onclick="showCalendarView()">Calendar</a>
+                        </div>
+                    </div>
+                </nav>
+            </header>
+            <div class="container">
+                <main role="main" class="pb-3">
+                    <div id="loading" class="text-center">
+                        <div class="spinner-border" role="status"></div>
+                        <p>Loading theater events...</p>
+                    </div>
+                    
+                    <div id="content" style="display: none;">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <h1>Kansas City Theater Events</h1>
+                                <p>Discover the latest plays and performances in the Kansas City metro area.</p>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="input-group mb-3">
+                                    <input type="text" class="form-control" id="searchInput" placeholder="Search events...">
+                                    <button class="btn btn-outline-secondary" onclick="searchEvents()">Search</button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="list-view">
+                            <h2>Upcoming Events</h2>
+                            <div id="events-list" class="row"></div>
+                        </div>
+                        
+                        <div id="calendar-view" style="display: none;">
+                            <h2>Calendar View</h2>
+                            <div id="events-calendar">
+                                <p class="text-info">Calendar view coming soon!</p>
+                            </div>
+                        </div>
+                    </div>
+                </main>
+            </div>
+
+            <footer class="border-top footer text-muted">
+                <div class="container">
+                    <span>&copy; 2025 - KC Theater Events - <a href="https://github.com/robkraft/kc-theater-scraper">GitHub</a></span>
+                </div>
+            </footer>
+
+            <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+            <script>
+                let allEvents = [];
+                
+                fetch('./data/kc-theater-events.json')
+                    .then(response => response.json())
+                    .then(data => {
+                        allEvents = data;
+                        displayEvents(allEvents);
+                        document.getElementById('loading').style.display = 'none';
+                        document.getElementById('content').style.display = 'block';
+                    })
+                    .catch(error => {
+                        console.error('Error loading events:', error);
+                        document.getElementById('loading').innerHTML = '<p class="text-danger">Error loading events.</p>';
+                    });
+
+                function displayEvents(events) {
+                    const eventsList = document.getElementById('events-list');
+                    eventsList.innerHTML = '';
+                    
+                    if (events.length === 0) {
+                        eventsList.innerHTML = '<div class="col-12"><p class="text-muted">No events found.</p></div>';
+                        return;
+                    }
+                    
+                    events.forEach(event => {
+                        const eventDate = new Date(event.startDate);
+                        const eventCard = document.createElement('div');
+                        eventCard.className = 'col-md-6 col-lg-4 mb-4';
+                        eventCard.innerHTML = \`
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title">\${event.title}</h5>
+                                    <h6 class="card-subtitle mb-2 text-muted">\${event.venueName}</h6>
+                                    <p class="card-text">\${event.description}</p>
+                                    <p class="card-text">
+                                        <small class="text-muted">
+                                            \${eventDate.toLocaleDateString()} at \${eventDate.toLocaleTimeString()}
+                                        </small>
+                                    </p>
+                                </div>
+                            </div>
+                        \`;
+                        eventsList.appendChild(eventCard);
+                    });
+                }
+
+                function searchEvents() {
+                    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+                    if (searchTerm === '') {
+                        displayEvents(allEvents);
+                        return;
+                    }
+                    
+                    const filteredEvents = allEvents.filter(event => 
+                        event.title.toLowerCase().includes(searchTerm) ||
+                        event.description.toLowerCase().includes(searchTerm) ||
+                        event.venueName.toLowerCase().includes(searchTerm)
+                    );
+                    
+                    displayEvents(filteredEvents);
+                }
+
+                function showListView() {
+                    document.getElementById('list-view').style.display = 'block';
+                    document.getElementById('calendar-view').style.display = 'none';
+                }
+
+                function showCalendarView() {
+                    document.getElementById('list-view').style.display = 'none';
+                    document.getElementById('calendar-view').style.display = 'block';
+                }
+
+                document.getElementById('searchInput').addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') searchEvents();
+                });
+            </script>
+        </body>
+        </html>
+        HTML
+        
+        # Create netlify.toml
+        cat > "$OUTPUT_PATH/netlify.toml" << 'TOML'
+        [build]
+          publish = "."
+
+        [[redirects]]
+          from = "/*"
+          to = "/index.html"
+          status = 200
+
+        [[headers]]
+          for = "*.json"
+          [headers.values]
+            Content-Type = "application/json"
+            Cache-Control = "public, max-age=3600"
+        TOML
+        
+        echo "Static site build complete!"
+        ls -la "$OUTPUT_PATH"
+        EOF
+        
+        # Run the build script
+        ./build-static.sh
+        
+    - name: Deploy to Netlify
+      run: |
+        cd static-site
+        netlify deploy --prod --dir . --site ${{ secrets.NETLIFY_SITE_ID }} --auth ${{ secrets.NETLIFY_AUTH_TOKEN }}
