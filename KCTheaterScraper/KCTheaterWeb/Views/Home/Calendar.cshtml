@@ -1,0 +1,172 @@
+@model CalendarViewModel
+@{
+    ViewData["Title"] = $"Calendar - {Model.MonthYearDisplay}";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h2">
+        <i class="fas fa-calendar text-primary me-2"></i>
+        Theater Calendar
+    </h1>
+    <div class="btn-group" role="group">
+        <a href="@Url.Action("Index")" class="btn btn-outline-primary">
+            <i class="fas fa-list"></i> List View
+        </a>
+        <a href="@Url.Action("Calendar")" class="btn btn-primary">
+            <i class="fas fa-calendar"></i> Calendar
+        </a>
+    </div>
+</div>
+
+<!-- Calendar Navigation -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row align-items-center">
+            <div class="col-md-4">
+                <a href="@Url.Action("Calendar", new { year = Model.PreviousMonth.Year, month = Model.PreviousMonth.Month })" 
+                   class="btn btn-outline-primary">
+                    <i class="fas fa-chevron-left"></i> @Model.PreviousMonth.ToString("MMM yyyy")
+                </a>
+            </div>
+            <div class="col-md-4 text-center">
+                <h3 class="mb-0">@Model.MonthYearDisplay</h3>
+            </div>
+            <div class="col-md-4 text-end">
+                <a href="@Url.Action("Calendar", new { year = Model.NextMonth.Year, month = Model.NextMonth.Month })" 
+                   class="btn btn-outline-primary">
+                    @Model.NextMonth.ToString("MMM yyyy") <i class="fas fa-chevron-right"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Calendar Grid -->
+<div class="card">
+    <div class="card-body">
+        <div class="calendar-grid">
+            <!-- Day Headers -->
+            <div class="row">
+                <div class="col text-center fw-bold py-2 border-bottom">Sun</div>
+                <div class="col text-center fw-bold py-2 border-bottom">Mon</div>
+                <div class="col text-center fw-bold py-2 border-bottom">Tue</div>
+                <div class="col text-center fw-bold py-2 border-bottom">Wed</div>
+                <div class="col text-center fw-bold py-2 border-bottom">Thu</div>
+                <div class="col text-center fw-bold py-2 border-bottom">Fri</div>
+                <div class="col text-center fw-bold py-2 border-bottom">Sat</div>
+            </div>
+
+            <!-- Calendar Days -->
+            @{
+                var weeks = Model.CalendarDays.GroupBy(d => d.Date.AddDays(-(int)d.Date.DayOfWeek)).ToList();
+            }
+            
+            @foreach (var week in weeks)
+            {
+                <div class="row calendar-week">
+                    @foreach (var day in week.OrderBy(d => d.Date.DayOfWeek))
+                    {
+                        <div class="col calendar-day p-1 @(day.IsCurrentMonth ? "" : "text-muted") @(day.IsToday ? "bg-light" : "")">
+                            <div class="calendar-day-content h-100 border rounded p-2" style="min-height: 120px;">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <span class="fw-bold @(day.IsToday ? "text-primary" : "")">
+                                        @day.Date.Day
+                                    </span>
+                                    @if (day.HasEvents)
+                                    {
+                                        <span class="badge bg-primary rounded-pill">@day.EventCount</span>
+                                    }
+                                </div>
+                                
+                                @if (day.HasEvents)
+                                {
+                                    <div class="mt-1">
+                                        @foreach (var calendarEvent in day.Events.Take(3))
+                                        {
+                                            <div class="calendar-event mb-1 p-1 rounded" style="font-size: 0.75rem; background-color: #e3f2fd;">
+                                                <a href="@Url.Action("Event", new { id = calendarEvent.Id })" 
+                                                   class="text-decoration-none text-dark fw-bold">
+                                                    @(calendarEvent.Title.Length > 20 ? calendarEvent.Title.Substring(0, 20) + "..." : calendarEvent.Title)
+                                                </a>
+                                                <div class="text-muted" style="font-size: 0.65rem;">
+                                                    @calendarEvent.FormattedTime
+                                                </div>
+                                            </div>
+                                        }
+                                        
+                                        @if (day.EventCount > 3)
+                                        {
+                                            <div class="text-muted" style="font-size: 0.7rem;">
+                                                +@(day.EventCount - 3) more
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Events List for Selected Day -->
+@if (Model.Events.Any())
+{
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="fas fa-list me-2"></i>
+                Events This Month
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                @foreach (var theaterEvent in Model.Events.OrderBy(e => e.StartDate).Take(20))
+                {
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h6 class="card-title">
+                                    <a href="@Url.Action("Event", new { id = theaterEvent.Id })" class="text-decoration-none">
+                                        @theaterEvent.Title
+                                    </a>
+                                </h6>
+                                <p class="card-text">
+                                    <small class="text-muted">
+                                        <i class="fas fa-map-marker-alt me-1"></i>@theaterEvent.VenueName<br>
+                                        <i class="fas fa-calendar me-1"></i>@theaterEvent.FormattedDateTime
+                                    </small>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+.calendar-week {
+    border-bottom: 1px solid #dee2e6;
+}
+
+.calendar-day {
+    border-right: 1px solid #dee2e6;
+}
+
+.calendar-day:last-child {
+    border-right: none;
+}
+
+.calendar-event {
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.calendar-event:hover {
+    background-color: #bbdefb !important;
+}
+</style>

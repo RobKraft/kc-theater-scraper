@@ -1,0 +1,32 @@
+[
+  {
+    "id": "1",
+    "title": "Romeo and Juliet",
+    "description": "Shakespeare's timeless tale of star-crossed lovers in a beautiful new production.",
+    "startDate": "2025-08-15T19:30:00",
+    "endDate": "2025-08-15T22:00:00",
+    "venueName": "Kauffman Center for the Performing Arts",
+    "venueAddress": "1601 Broadway Blvd, Kansas City, MO 64108",
+    "venueWebsite": "https://www.kauffmancenter.org"
+  },
+  {
+    "id": "2", 
+    "title": "The Phantom of the Opera",
+    "description": "The beloved musical returns to Kansas City with stunning performances.",
+    "startDate": "2025-08-20T20:00:00",
+    "endDate": "2025-08-20T23:00:00",
+    "venueName": "Music Hall Kansas City",
+    "venueAddress": "301 W 13th St, Kansas City, MO 64105",
+    "venueWebsite": "https://www.musichallkc.com"
+  },
+  {
+    "id": "3",
+    "title": "A Midsummer Night's Dream", 
+    "description": "A magical comedy under the stars at Starlight Theatre.",
+    "startDate": "2025-08-25T19:00:00",
+    "endDate": "2025-08-25T21:30:00",
+    "venueName": "Starlight Theatre",
+    "venueAddress": "4600 Starlight Rd, Kansas City, MO 64132",
+    "venueWebsite": "https://www.kcstarlight.com"
+  }
+]

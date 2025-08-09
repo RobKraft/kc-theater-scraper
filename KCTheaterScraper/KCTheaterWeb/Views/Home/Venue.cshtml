@@ -1,0 +1,100 @@
+@model List<TheaterEvent>
+@{
+    ViewData["Title"] = $"Events at {ViewBag.VenueName}";
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="@Url.Action("Index", "Home")">Events</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@ViewBag.VenueName</li>
+    </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h2">
+        <i class="fas fa-building text-primary me-2"></i>
+        @ViewBag.VenueName
+    </h1>
+    <a href="@Url.Action("Index", "Home")" class="btn btn-outline-primary">
+        <i class="fas fa-arrow-left me-2"></i>All Events
+    </a>
+</div>
+
+@if (Model.Any())
+{
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle me-2"></i>
+        Showing @Model.Count event(s) at @ViewBag.VenueName
+    </div>
+
+    <div class="row">
+        @foreach (var theaterEvent in Model)
+        {
+            <div class="col-md-6 col-lg-4 mb-4">
+                <div class="card h-100 theater-card">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <a href="@Url.Action("Event", new { id = theaterEvent.Id })" class="text-decoration-none">
+                                @theaterEvent.Title
+                            </a>
+                        </h5>
+                        
+                        <div class="mb-2">
+                            <strong class="text-primary">
+                                <i class="fas fa-calendar me-1"></i>
+                                @theaterEvent.FormattedDate
+                            </strong>
+                        </div>
+                        
+                        <div class="mb-2 event-time">
+                            <i class="fas fa-clock me-1"></i>
+                            @theaterEvent.FormattedTime
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(theaterEvent.Description))
+                        {
+                            <p class="card-text">
+                                @(theaterEvent.Description.Length > 100 ? theaterEvent.Description.Substring(0, 100) + "..." : theaterEvent.Description)
+                            </p>
+                        }
+
+                        @if (!string.IsNullOrEmpty(theaterEvent.Category))
+                        {
+                            <span class="badge bg-secondary mb-2">@theaterEvent.Category</span>
+                        }
+
+                        <div class="mt-auto">
+                            @if (theaterEvent.TicketPrice.HasValue)
+                            {
+                                <div class="event-price mb-2">$@theaterEvent.TicketPrice.Value.ToString("F2")</div>
+                            }
+                            
+                            <div class="d-flex gap-2">
+                                <a href="@Url.Action("Event", new { id = theaterEvent.Id })" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-info-circle me-1"></i>Details
+                                </a>
+                                @if (!string.IsNullOrEmpty(theaterEvent.TicketUrl))
+                                {
+                                    <a href="@theaterEvent.TicketUrl" target="_blank" class="btn btn-sm btn-primary">
+                                        <i class="fas fa-ticket-alt me-1"></i>Tickets
+                                    </a>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+else
+{
+    <div class="alert alert-warning">
+        <h4 class="alert-heading">No events found</h4>
+        <p>There are currently no events scheduled at @ViewBag.VenueName. Check back later for new events.</p>
+        <hr>
+        <a href="@Url.Action("Index", "Home")" class="btn btn-primary">
+            <i class="fas fa-list me-2"></i>View All Events
+        </a>
+    </div>
+}

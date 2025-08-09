@@ -1,0 +1,607 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kansas City Theater Events</title>
+    <!-- Bootstrap CSS from CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome for icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="css/site.css" rel="stylesheet" />
+    <style>
+        .footer {
+            position: sticky;
+            top: 100vh;
+            background-color: #f8f9fa;
+            padding: 20px 0;
+            margin-top: 40px;
+        }
+        .box-shadow {
+            box-shadow: 0 .125rem .25rem rgba(0,0,0,.075);
+        }
+        .card {
+            transition: transform 0.2s;
+        }
+        .card:hover {
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <nav class="navbar navbar-expand-sm navbar-dark bg-dark shadow-sm mb-4">
+            <div class="container-fluid">
+                <a class="navbar-brand" href="/">
+                    <i class="fas fa-theater-masks me-2"></i>KC Theater Events
+                </a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
+                    <ul class="navbar-nav flex-grow-1">
+                        <li class="nav-item">
+                            <a class="nav-link active" href="#" onclick="showListView()">
+                                <i class="fas fa-list me-1"></i>List View
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" onclick="showCalendarView()">
+                                <i class="fas fa-calendar me-1"></i>Calendar
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </header>
+    <div class="container">
+        <main role="main" class="pb-3">
+            <div id="loading" class="text-center">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p>Loading theater events...</p>
+            </div>
+            
+            <div id="content" style="display: none;">
+                <div class="row">
+                    <div class="col-md-8">
+                        <h1>Kansas City Theater Events</h1>
+                        <p>Discover the latest plays and performances in the Kansas City metro area.</p>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="input-group mb-3">
+                            <input type="text" class="form-control" id="searchInput" placeholder="Search events...">
+                            <button class="btn btn-outline-secondary" type="button" onclick="searchEvents()">Search</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="list-view">
+                    <h2>Upcoming Events</h2>
+                    <div id="events-list" class="row"></div>
+                </div>
+                
+                <div id="calendar-view" style="display: none;">
+                    <h2>Calendar View</h2>
+                    <div id="events-calendar"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Event Details Modal -->
+    <div class="modal fade" id="eventModal" tabindex="-1" aria-labelledby="eventModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="eventModalLabel">Event Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="eventModalBody">
+                    <!-- Event details will be loaded here -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="border-top footer text-muted">
+        <div class="container">
+            &copy; 2025 - KC Theater Events - <a href="https://github.com/robkraft/kc-theater-scraper">GitHub</a>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let allEvents = [];
+        
+        // Load events data with better error handling
+        fetch('./data/kc-theater-events.json')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                allEvents = data || [];
+                displayEvents(allEvents);
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('content').style.display = 'block';
+            })
+            .catch(error => {
+                console.error('Error loading events:', error);
+                document.getElementById('loading').innerHTML = '<div class="alert alert-warning"><h4>Sample Data Loading...</h4><p>Using demo theater events. In production, this would load live scraped data.</p></div>';
+                
+                // Fallback to sample data
+                allEvents = [
+                    {
+                        "id": "1",
+                        "title": "Romeo and Juliet",
+                        "description": "Shakespeare's timeless tale of star-crossed lovers in a beautiful new production.",
+                        "startDate": "2025-08-15T19:30:00",
+                        "venueName": "Kauffman Center for the Performing Arts"
+                    },
+                    {
+                        "id": "2", 
+                        "title": "The Phantom of the Opera",
+                        "description": "The beloved musical returns to Kansas City with stunning performances.",
+                        "startDate": "2025-08-20T20:00:00",
+                        "venueName": "Music Hall Kansas City"
+                    },
+                    {
+                        "id": "3",
+                        "title": "A Midsummer Night's Dream", 
+                        "description": "A magical comedy under the stars at Starlight Theatre.",
+                        "startDate": "2025-08-25T19:00:00",
+                        "venueName": "Starlight Theatre"
+                    }
+                ];
+                
+                displayEvents(allEvents);
+                document.getElementById('content').style.display = 'block';
+            });
+
+        function displayEvents(events) {
+            const eventsList = document.getElementById('events-list');
+            eventsList.innerHTML = '';
+            
+            if (events.length === 0) {
+                eventsList.innerHTML = '<div class="col-12"><p class="text-muted">No events found.</p></div>';
+                return;
+            }
+            
+            events.forEach(event => {
+                const eventDate = new Date(event.startDate);
+                const eventCard = `
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">
+                                    <a href="#" class="text-decoration-none" onclick="showEventDetails('${event.id}')">${event.title}</a>
+                                </h5>
+                                <h6 class="card-subtitle mb-2 text-muted">
+                                    <i class="fas fa-map-marker-alt"></i> ${event.venueName}
+                                </h6>
+                                <p class="card-text flex-grow-1">${event.description || 'No description available'}</p>
+                                <div class="mt-auto">
+                                    <p class="card-text mb-0">
+                                        <small class="text-muted">
+                                            <i class="fas fa-calendar"></i> ${eventDate.toLocaleDateString()}
+                                            <br>
+                                            <i class="fas fa-clock"></i> ${eventDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                        </small>
+                                    </p>
+                                    <button class="btn btn-outline-primary btn-sm mt-2" onclick="showEventDetails('${event.id}')">
+                                        <i class="fas fa-info-circle"></i> View Details
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                eventsList.innerHTML += eventCard;
+            });
+        }
+
+        function searchEvents() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            if (searchTerm === '') {
+                displayEvents(allEvents);
+                return;
+            }
+            
+            const filteredEvents = allEvents.filter(event => 
+                event.title.toLowerCase().includes(searchTerm) ||
+                event.description.toLowerCase().includes(searchTerm) ||
+                event.venueName.toLowerCase().includes(searchTerm)
+            );
+            
+            displayEvents(filteredEvents);
+        }
+
+        function showListView() {
+            document.getElementById('list-view').style.display = 'block';
+            document.getElementById('calendar-view').style.display = 'none';
+            
+            // Update active nav
+            document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
+            document.querySelector('[onclick="showListView()"]').classList.add('active');
+        }
+
+        function showCalendarView() {
+            document.getElementById('list-view').style.display = 'none';
+            document.getElementById('calendar-view').style.display = 'block';
+            
+            // Update active nav
+            document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
+            document.querySelector('[onclick="showCalendarView()"]').classList.add('active');
+            
+            // Generate calendar view
+            generateCalendarView();
+        }
+
+        function generateCalendarView() {
+            const calendar = document.getElementById('events-calendar');
+            
+            if (allEvents.length === 0) {
+                calendar.innerHTML = '<div class="alert alert-info"><h4>No Events</h4><p>No events available to display in calendar view.</p></div>';
+                return;
+            }
+
+            // Get current month or find the month with events
+            const now = new Date();
+            const eventDates = allEvents.map(e => new Date(e.startDate));
+            const earliestEvent = new Date(Math.min(...eventDates));
+            
+            // Use current month if it has events, otherwise use the earliest event month
+            const calendarDate = eventDates.some(date => 
+                date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear()
+            ) ? new Date(now) : new Date(earliestEvent);
+
+            // Store current calendar date for navigation
+            window.currentCalendarDate = calendarDate;
+            
+            // Generate the calendar for this date
+            generateCalendarViewForDate(calendarDate);
+        }
+
+        // Add month navigation function
+        function changeMonth(direction) {
+            if (!window.currentCalendarDate) {
+                // Initialize with current date if not set
+                const now = new Date();
+                const eventDates = allEvents.map(e => new Date(e.startDate));
+                const earliestEvent = new Date(Math.min(...eventDates));
+                
+                window.currentCalendarDate = eventDates.some(date => 
+                    date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear()
+                ) ? new Date(now) : new Date(earliestEvent);
+            }
+            
+            // Create a new date object and change the month
+            const newDate = new Date(window.currentCalendarDate);
+            newDate.setMonth(newDate.getMonth() + direction);
+            window.currentCalendarDate = newDate;
+            
+            generateCalendarViewForDate(window.currentCalendarDate);
+        }
+
+        function generateCalendarViewForDate(calendarDate) {
+            const calendar = document.getElementById('events-calendar');
+            
+            if (allEvents.length === 0) {
+                calendar.innerHTML = '<div class="alert alert-info"><h4>No Events</h4><p>No events available to display in calendar view.</p></div>';
+                return;
+            }
+
+            const year = calendarDate.getFullYear();
+            const month = calendarDate.getMonth();
+            
+            // Create month navigation
+            const monthNames = ["January", "February", "March", "April", "May", "June",
+                "July", "August", "September", "October", "November", "December"];
+            
+            // Group events by date string
+            const eventsByDate = {};
+            allEvents.forEach(event => {
+                const eventDate = new Date(event.startDate);
+                const dateKey = `${eventDate.getFullYear()}-${eventDate.getMonth()}-${eventDate.getDate()}`;
+                if (!eventsByDate[dateKey]) {
+                    eventsByDate[dateKey] = [];
+                }
+                eventsByDate[dateKey].push(event);
+            });
+
+            // Generate calendar HTML
+            let calendarHTML = `
+                <div class="calendar-container">
+                    <div class="calendar-header d-flex justify-content-between align-items-center mb-4">
+                        <button class="btn btn-outline-primary" onclick="changeMonth(-1)">
+                            <i class="fas fa-chevron-left"></i> Previous
+                        </button>
+                        <h3 class="mb-0">${monthNames[month]} ${year}</h3>
+                        <button class="btn btn-outline-primary" onclick="changeMonth(1)">
+                            Next <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="calendar-grid">
+                        <div class="calendar-weekdays">
+                            <div class="weekday">Sun</div>
+                            <div class="weekday">Mon</div>
+                            <div class="weekday">Tue</div>
+                            <div class="weekday">Wed</div>
+                            <div class="weekday">Thu</div>
+                            <div class="weekday">Fri</div>
+                            <div class="weekday">Sat</div>
+                        </div>
+                        <div class="calendar-days">
+            `;
+
+            // Get first day of month and number of days
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const daysInMonth = lastDay.getDate();
+            const startingDayOfWeek = firstDay.getDay();
+
+            // Add empty cells for days before month starts
+            for (let i = 0; i < startingDayOfWeek; i++) {
+                calendarHTML += '<div class="calendar-day empty"></div>';
+            }
+
+            // Add days of the month
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dateKey = `${year}-${month}-${day}`;
+                const dayEvents = eventsByDate[dateKey] || [];
+                const isToday = new Date().toDateString() === new Date(year, month, day).toDateString();
+                
+                calendarHTML += `
+                    <div class="calendar-day ${isToday ? 'today' : ''} ${dayEvents.length > 0 ? 'has-events' : ''}">
+                        <div class="day-number">${day}</div>
+                        <div class="day-events">
+                `;
+                
+                // Add events for this day (limit to 3 for space)
+                dayEvents.slice(0, 3).forEach(event => {
+                    const eventTime = new Date(event.startDate);
+                    calendarHTML += `
+                        <div class="event-item" onclick="showEventDetails('${event.id}')" title="${event.title} at ${event.venueName}">
+                            <i class="fas fa-theater-masks"></i>
+                            <span class="event-title">${event.title.length > 20 ? event.title.substring(0, 20) + '...' : event.title}</span>
+                            <small class="event-time">${eventTime.toLocaleTimeString([], {hour: 'numeric', minute:'2-digit'})}</small>
+                        </div>
+                    `;
+                });
+                
+                if (dayEvents.length > 3) {
+                    calendarHTML += `<div class="more-events">+${dayEvents.length - 3} more</div>`;
+                }
+                
+                calendarHTML += `
+                        </div>
+                    </div>
+                `;
+            }
+
+            calendarHTML += `
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Add calendar-specific CSS
+            const calendarCSS = `
+                <style>
+                .calendar-container {
+                    background: white;
+                    border-radius: 8px;
+                    padding: 20px;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                }
+                .calendar-grid {
+                    display: grid;
+                    grid-template-rows: auto 1fr;
+                    border: 1px solid #dee2e6;
+                    border-radius: 8px;
+                    overflow: hidden;
+                }
+                .calendar-weekdays {
+                    display: grid;
+                    grid-template-columns: repeat(7, 1fr);
+                    background: #f8f9fa;
+                }
+                .weekday {
+                    padding: 15px 10px;
+                    text-align: center;
+                    font-weight: bold;
+                    border-right: 1px solid #dee2e6;
+                    color: #495057;
+                }
+                .weekday:last-child {
+                    border-right: none;
+                }
+                .calendar-days {
+                    display: grid;
+                    grid-template-columns: repeat(7, 1fr);
+                }
+                .calendar-day {
+                    min-height: 120px;
+                    padding: 8px;
+                    border-right: 1px solid #dee2e6;
+                    border-bottom: 1px solid #dee2e6;
+                    position: relative;
+                    background: white;
+                }
+                .calendar-day:nth-child(7n) {
+                    border-right: none;
+                }
+                .calendar-day.empty {
+                    background: #f8f9fa;
+                }
+                .calendar-day.today {
+                    background: #e3f2fd;
+                }
+                .calendar-day.has-events {
+                    background: #f0f8ff;
+                }
+                .day-number {
+                    font-weight: bold;
+                    margin-bottom: 5px;
+                    color: #495057;
+                }
+                .today .day-number {
+                    color: #0d6efd;
+                    background: #0d6efd;
+                    color: white;
+                    border-radius: 50%;
+                    width: 24px;
+                    height: 24px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 12px;
+                }
+                .day-events {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 2px;
+                }
+                .event-item {
+                    background: #0d6efd;
+                    color: white;
+                    padding: 2px 6px;
+                    border-radius: 3px;
+                    font-size: 10px;
+                    cursor: pointer;
+                    transition: background 0.2s;
+                    display: flex;
+                    align-items: center;
+                    gap: 3px;
+                    margin-bottom: 1px;
+                }
+                .event-item:hover {
+                    background: #0b5ed7;
+                }
+                .event-title {
+                    flex: 1;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                }
+                .event-time {
+                    font-size: 9px;
+                    opacity: 0.9;
+                }
+                .more-events {
+                    font-size: 9px;
+                    color: #6c757d;
+                    text-align: center;
+                    margin-top: 2px;
+                }
+                @media (max-width: 768px) {
+                    .calendar-day {
+                        min-height: 80px;
+                        padding: 4px;
+                    }
+                    .event-item {
+                        font-size: 9px;
+                        padding: 1px 4px;
+                    }
+                    .event-title {
+                        display: none;
+                    }
+                    .weekday {
+                        padding: 10px 5px;
+                        font-size: 12px;
+                    }
+                }
+                </style>
+            `;
+            
+            calendar.innerHTML = calendarCSS + calendarHTML;
+        }
+
+        function showEventDetails(eventId) {
+            const event = allEvents.find(e => e.id === eventId);
+            if (!event) {
+                console.error('Event not found:', eventId);
+                return;
+            }
+
+            const eventDate = new Date(event.startDate);
+            const modalBody = document.getElementById('eventModalBody');
+            const modalTitle = document.getElementById('eventModalLabel');
+
+            modalTitle.textContent = event.title;
+            
+            modalBody.innerHTML = `
+                <div class="row">
+                    <div class="col-md-8">
+                        <h4 class="text-primary mb-3">${event.title}</h4>
+                        <div class="mb-3">
+                            <h6><i class="fas fa-map-marker-alt text-danger"></i> Venue</h6>
+                            <p class="ms-4">${event.venueName}</p>
+                        </div>
+                        <div class="mb-3">
+                            <h6><i class="fas fa-calendar text-primary"></i> Date & Time</h6>
+                            <p class="ms-4">
+                                ${eventDate.toLocaleDateString('en-US', { 
+                                    weekday: 'long', 
+                                    year: 'numeric', 
+                                    month: 'long', 
+                                    day: 'numeric' 
+                                })}<br>
+                                ${eventDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                            </p>
+                        </div>
+                        <div class="mb-3">
+                            <h6><i class="fas fa-info-circle text-info"></i> Description</h6>
+                            <p class="ms-4">${event.description || 'No description available'}</p>
+                        </div>
+                        ${event.ticketUrl ? `
+                        <div class="mb-3">
+                            <h6><i class="fas fa-ticket-alt text-success"></i> Tickets</h6>
+                            <p class="ms-4">
+                                <a href="${event.ticketUrl}" target="_blank" class="btn btn-success">
+                                    <i class="fas fa-external-link-alt"></i> Get Tickets
+                                </a>
+                            </p>
+                        </div>
+                        ` : ''}
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <i class="fas fa-theater-masks fa-3x text-primary mb-3"></i>
+                                <h6 class="card-title">Quick Info</h6>
+                                <p class="card-text small">
+                                    <strong>Venue:</strong><br>${event.venueName}<br><br>
+                                    <strong>Date:</strong><br>${eventDate.toLocaleDateString()}<br><br>
+                                    <strong>Time:</strong><br>${eventDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Show the modal
+            const modal = new bootstrap.Modal(document.getElementById('eventModal'));
+            modal.show();
+        }
+
+        // Allow search on Enter key
+        document.getElementById('searchInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchEvents();
+            }
+        });
+    </script>
+</body>
+</html>
